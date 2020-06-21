@@ -9,9 +9,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class HomeController {
 
-    @GetMapping("/")
+    @GetMapping(value = {"/","index"})
     public String index(Model model){
-        model.addAttribute("name","慕课");
         return "index";
     }
 
