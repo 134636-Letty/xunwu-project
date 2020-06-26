@@ -1,6 +1,10 @@
 package com.imooc;
 
+import com.imooc.entity.User;
 import com.imooc.repository.UserRepository;
+import com.imooc.service.IUserService;
+import com.imooc.service.user.UserServiceImpl;
+import com.qiniu.util.Json;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +24,15 @@ public class ApplicationTests {
 
         System.out.println("00000000000");
 //        Assert.assertEquals("waliwali",user.get().getName());
+    }
+
+    @Autowired
+    IUserService userService;
+
+    @Test
+    public void Test(){
+        User user = userService.findUserByName("admin");
+        System.out.println(user);
     }
 
 }

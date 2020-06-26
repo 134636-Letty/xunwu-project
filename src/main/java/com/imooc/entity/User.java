@@ -36,7 +36,7 @@ public class User implements UserDetails {
     @Column(name = "last_update_time")
     private Date lastUpdateTime;
 
-    private String avator;//头像
+    private String avatar;//头像
 
     //存权限信息，但是MySQL中并没有对应字段，jpn默认会验证字段，这里不需要去验证
     @Transient //透明

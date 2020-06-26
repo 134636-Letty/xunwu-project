@@ -2,6 +2,7 @@ package com.imooc.security;
 
 import com.imooc.entity.User;
 import com.imooc.service.IUserService;
+import com.imooc.service.user.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -10,10 +11,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.authentication.encoding.Md5PasswordEncoder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.stereotype.Component;
 
 /**
  * 自定义认证实现
  */
+@Component
 public class AuthProvider implements AuthenticationProvider {
 
     @Autowired
@@ -23,7 +26,7 @@ public class AuthProvider implements AuthenticationProvider {
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        String userName = authentication.getName();
+            String userName = authentication.getName();
         String inputPassword = (String)authentication.getCredentials();
         //用UserRepository查数据库加载到内存里，再去认证
         User user = userService.findUserByName(userName);
