@@ -1,10 +1,8 @@
 package com.imooc.web.controller;
 
-import com.imooc.base.ApiResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 public class HomeController {
@@ -29,7 +27,7 @@ public class HomeController {
         return "500";
     }
 
-    @GetMapping("/logout")
+    @GetMapping("/logout/page")
     public String logoutPage(){
         return "logout";
     }
