@@ -1,4 +1,4 @@
-package com.imooc.dto;
+package com.imooc.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

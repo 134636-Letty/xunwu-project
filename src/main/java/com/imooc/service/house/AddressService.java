@@ -1,9 +1,10 @@
 package com.imooc.service.house;
 
-import com.imooc.dto.SubwayDTO;
-import com.imooc.dto.SubwayStationDTO;
-import com.imooc.dto.SupportAddressDTO;
+
 import com.imooc.service.ServiceMultiResult;
+import com.imooc.web.dto.SubwayDTO;
+import com.imooc.web.dto.SubwayStationDTO;
+import com.imooc.web.dto.SupportAddressDTO;
 
 public interface AddressService {
 

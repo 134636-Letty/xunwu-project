@@ -1,8 +1,5 @@
 package com.imooc.service.house;
 
-import com.imooc.dto.SubwayDTO;
-import com.imooc.dto.SubwayStationDTO;
-import com.imooc.dto.SupportAddressDTO;
 import com.imooc.entity.Subway;
 import com.imooc.entity.SubwayStation;
 import com.imooc.entity.SupportAddress;
@@ -10,6 +7,9 @@ import com.imooc.repository.HouseRepository;
 import com.imooc.repository.SubwayRepository;
 import com.imooc.repository.SubwayStationRepository;
 import com.imooc.service.ServiceMultiResult;
+import com.imooc.web.dto.SubwayDTO;
+import com.imooc.web.dto.SubwayStationDTO;
+import com.imooc.web.dto.SupportAddressDTO;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

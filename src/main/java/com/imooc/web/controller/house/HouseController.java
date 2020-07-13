@@ -1,11 +1,12 @@
 package com.imooc.web.controller.house;
 
 import com.imooc.base.ApiResponse;
-import com.imooc.dto.SubwayDTO;
-import com.imooc.dto.SubwayStationDTO;
-import com.imooc.dto.SupportAddressDTO;
+
 import com.imooc.service.ServiceMultiResult;
 import com.imooc.service.house.AddressService;
+import com.imooc.web.dto.SubwayDTO;
+import com.imooc.web.dto.SubwayStationDTO;
+import com.imooc.web.dto.SupportAddressDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
