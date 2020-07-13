@@ -7,13 +7,13 @@ import lombok.Data;
 public class SupportAddressDTO {
     private Long id;
 
-    @JsonProperty
+    @JsonProperty(value = "belong_to")
     private String belongTo;
 
-    @JsonProperty
+    @JsonProperty(value = "en_name")
     private String enName;
 
-    @JsonProperty
+    @JsonProperty(value = "cn_name")
     private String cnName;
 
     @JsonProperty

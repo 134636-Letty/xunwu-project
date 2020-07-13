@@ -8,4 +8,6 @@ import java.util.List;
 public interface HouseRepository extends CrudRepository<SupportAddress,Long> {
 
     List<SupportAddress> findAllByLevel (String level);
+
+    List<SupportAddress> findAllByLevelAndBelongTo(String level,String belongTo);
 }
