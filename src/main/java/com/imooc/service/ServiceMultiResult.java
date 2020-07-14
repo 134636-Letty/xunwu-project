@@ -9,7 +9,7 @@ public class ServiceMultiResult<T> {
     private long total;
     private List<T> result;
 
-    public ServiceMultiResult(int size, List<T> result) {
+    public ServiceMultiResult(long size, List<T> result) {
         this.total = size;
         this.result = result;
     }

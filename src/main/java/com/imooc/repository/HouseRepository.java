@@ -1,13 +1,12 @@
 package com.imooc.repository;
 
-import com.imooc.entity.SupportAddress;
-import org.springframework.data.repository.CrudRepository;
+import com.imooc.entity.House;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.repository.PagingAndSortingRepository;
 
-import java.util.List;
 
-public interface HouseRepository extends CrudRepository<SupportAddress,Long> {
+public interface HouseRepository extends PagingAndSortingRepository<House, Long>, JpaSpecificationExecutor<House> {
 
-    List<SupportAddress> findAllByLevel (String level);
 
-    List<SupportAddress> findAllByLevelAndBelongTo(String level,String belongTo);
+
 }

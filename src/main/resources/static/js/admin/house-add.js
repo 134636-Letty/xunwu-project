@@ -131,7 +131,7 @@ $(function () {
 
             $(form).ajaxSubmit({
                 type: 'post',
-                url: '/admin/add/house', // 提交地址
+                url: '/admin/add/houseInfo', // 提交地址
                 success: function (data) {
                     if (data.code === 200) {
                         alert('提交成功！');

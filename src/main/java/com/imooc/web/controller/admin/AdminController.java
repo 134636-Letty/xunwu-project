@@ -1,25 +1,44 @@
 package com.imooc.web.controller.admin;
 
 import com.google.gson.Gson;
+import com.imooc.base.ApiDataTableResponse;
 import com.imooc.base.ApiResponse;
+import com.imooc.entity.SupportAddress;
+import com.imooc.service.ServiceMultiResult;
+import com.imooc.service.ServiceResult;
+import com.imooc.service.house.AddressService;
+import com.imooc.service.house.HouseService;
 import com.imooc.service.house.IQiNiuService;
+import com.imooc.web.dto.HouseDTO;
 import com.imooc.web.dto.QiNiuPutRet;
+import com.imooc.web.dto.SupportAddressDTO;
+import com.imooc.web.form.DatatableSearch;
+import com.imooc.web.form.HouseForm;
 import com.qiniu.common.QiniuException;
 import com.qiniu.http.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.validation.Valid;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 
 @Controller
 public class AdminController {
+    @Autowired
+    IQiNiuService qiNiuService;
+    @Autowired
+    Gson gson;
+    @Autowired
+    HouseService houseService;
+    @Autowired
+    AddressService addressService;
 
     @GetMapping("/admin/center")
     public String adminCenterPage(){
@@ -45,10 +64,51 @@ public class AdminController {
         return "admin/house-add";
     }
 
-    @Autowired
-    IQiNiuService qiNiuService;
-    @Autowired
-    Gson gson;
+    /**
+     * 新增房源功能页
+     * @return
+     */
+    @PostMapping("admin/add/houseInfo")
+    @ResponseBody
+    public ApiResponse addHouse(@Valid @ModelAttribute("form-house-add")HouseForm form, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()){
+            return new ApiResponse(HttpStatus.BAD_REQUEST.value(),bindingResult.getAllErrors().get(0).getDefaultMessage(),null);
+        }
+
+        if (form.getPhotos() == null || form.getCover() == null){
+            return ApiResponse.ofMessage(HttpStatus.BAD_REQUEST.value(),"必须上传图片");
+        }
+
+        Map<SupportAddress.Level, SupportAddressDTO> map = addressService.findCityAndRegion(form.getCityEnName(),form.getRegionEnName());
+        if (map.keySet().size() !=2){
+            return ApiResponse.ofStatus(ApiResponse.Status.NOT_VALID_PARAM);
+        }
+
+        ServiceResult<Boolean> result = houseService.save(form);
+        if (result.isSuccess()){
+            return ApiResponse.ofSuccess(result.getResult());
+        }
+
+        return ApiResponse.ofSuccess(ApiResponse.Status.NOT_VALID_PARAM);
+    }
+
+    @GetMapping("admin/house/list")
+    public String houseListPage(){
+        return "admin/house-list";
+    }
+
+    @PostMapping("admin/houses")
+    @ResponseBody
+    public ApiDataTableResponse houses(@ModelAttribute DatatableSearch searchBody){
+        ServiceMultiResult<HouseDTO> result =houseService.adminQuery(searchBody);
+        ApiDataTableResponse response = new ApiDataTableResponse(ApiResponse.Status.SUCCESS);
+        response.setData(result.getResult());
+        response.setRecordsFiltered(result.getTotal());
+        response.setRecordsTotal(result.getTotal());
+        response.setDraw(searchBody.getDraw());
+        return response;
+    }
+
 
     @PostMapping(value = "admin/upload/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
