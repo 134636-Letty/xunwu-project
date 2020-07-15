@@ -2,6 +2,7 @@ package com.imooc.service.house;
 
 import com.imooc.base.ApiResponse;
 import com.imooc.base.HouseStatus;
+import com.imooc.base.HouseSubscribeStatus;
 import com.imooc.base.LoginUserUtil;
 import com.imooc.entity.*;
 import com.imooc.repository.*;
@@ -10,6 +11,7 @@ import com.imooc.service.ServiceResult;
 import com.imooc.web.dto.HouseDTO;
 import com.imooc.web.dto.HouseDetailDTO;
 import com.imooc.web.dto.HousePictureDTO;
+import com.imooc.web.dto.HouseSubscribeDTO;
 import com.imooc.web.form.DatatableSearch;
 import com.imooc.web.form.HouseForm;
 import com.imooc.web.form.PhotoForm;
@@ -21,15 +23,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class HouseServiceImpl implements HouseService {
@@ -184,6 +184,218 @@ public class HouseServiceImpl implements HouseService {
         return housePictures;
     }
 
+
+
+    @Override
+    @Transactional
+    public ServiceResult update(HouseForm houseForm) {
+        House house = this.houseRepository.findOne(houseForm.getId());
+        if (house == null) {
+            return ServiceResult.notFound();
+        }
+
+        HouseDetail detail = this.detailRepository.findAllByHouseId(house.getId());
+        if (detail == null) {
+            return ServiceResult.notFound();
+        }
+
+        ServiceResult wrapperResult = wrapperDetailInfo(detail, houseForm);
+        if (wrapperResult != null) {
+            return wrapperResult;
+        }
+
+        detailRepository.save(detail);
+
+        List<HousePicture> pictures = generatePictures(houseForm, houseForm.getId());
+        pictureRepository.save(pictures);
+
+        if (houseForm.getCover() == null) {
+            houseForm.setCover(house.getCover());
+        }
+
+        modelMapper.map(houseForm, house);
+        house.setLastUpdateTime(new Date());
+        houseRepository.save(house);
+
+        /*if (house.getStatus() == HouseStatus.PASSES.getValue()) {
+            searchService.index(house.getId());
+        }*/
+
+        return ServiceResult.success();
+    }
+
+    @Autowired
+    SubwayStationRepository subwayStationRepository;
+    @Autowired
+    SubwayRepository subwayRepository;
+    /**
+     * 房源详细信息对象填充
+     * @param houseDetail
+     * @param houseForm
+     * @return
+     */
+    private ServiceResult<HouseDTO> wrapperDetailInfo(HouseDetail houseDetail, HouseForm houseForm) {
+        Subway subway = subwayRepository.findOne(houseForm.getSubwayLineId());
+        if (subway == null) {
+            return new ServiceResult<>(false, "Not valid subway line!");
+        }
+
+        SubwayStation subwayStation = subwayStationRepository.findOne(houseForm.getSubwayStationId());
+        if (subwayStation == null || subway.getId() != subwayStation.getSubwayId()) {
+            return new ServiceResult<>(false, "Not valid subway station!");
+        }
+
+        houseDetail.setSubwayLineId(subway.getId());
+        houseDetail.setSubwayLineName(subway.getName());
+
+        houseDetail.setSubwayStationId(subwayStation.getId());
+        houseDetail.setSubwayStationName(subwayStation.getName());
+
+        houseDetail.setDescription(houseForm.getDescription());
+        houseDetail.setDetailAddress(houseForm.getDetailAddress());
+        houseDetail.setLayoutDesc(houseForm.getLayoutDesc());
+        houseDetail.setRentWay(houseForm.getRentWay());
+        houseDetail.setRoundService(houseForm.getRoundService());
+        houseDetail.setTraffic(houseForm.getTraffic());
+        return null;
+
+    }
+
+
+    /**
+     * 图片对象列表信息填充
+     * @param form
+     * @param houseId
+     * @return
+     */
+    private List<HousePicture> generatePictures(HouseForm form, Long houseId) {
+        List<HousePicture> pictures = new ArrayList<>();
+        if (form.getPhotos() == null || form.getPhotos().isEmpty()) {
+            return pictures;
+        }
+
+        for (PhotoForm photoForm : form.getPhotos()) {
+            HousePicture picture = new HousePicture();
+            picture.setHouseId(houseId);
+            picture.setCdnPrefix(cdnPrefix);
+            picture.setPath(photoForm.getPath());
+            picture.setWidth(photoForm.getWidth());
+            picture.setHeight(photoForm.getHeight());
+            pictures.add(picture);
+        }
+        return pictures;
+    }
+
+    @Override
+    public ServiceResult<Boolean> addTag(String tag,Long houseId) {
+        House house = houseRepository.findOne(houseId);
+        if (null == house){
+            return ServiceResult.notFound();
+        }
+
+        HouseTag houseTag = tagRepository.findByHouseIdAndName(houseId, tag);
+        if (null != houseTag) {
+            return new ServiceResult(false, "标签已存在");
+        }
+
+        tagRepository.save(new HouseTag(houseId,tag));
+        return ServiceResult.success();
+    }
+
+    @Override
+    @Transactional
+    public ServiceResult removeTag(Long houseId, String tag) {
+        House house = houseRepository.findOne(houseId);
+        if (house == null) {
+            return ServiceResult.notFound();
+        }
+
+        HouseTag houseTag = tagRepository.findByHouseIdAndName(houseId,tag);
+        if (houseTag == null) {
+            return new ServiceResult(false, "标签不存在");
+        }
+
+        tagRepository.delete(houseTag.getId());
+        return ServiceResult.success();
+    }
+
+
+    @Override
+    @Transactional
+    public ServiceResult updateStatus(Long id,int status){
+        House house = houseRepository.findOne(id);
+        if (null == house){
+            return ServiceResult.notFound();
+        }
+        if (house.getStatus() == status){
+            return new ServiceResult(false,"状态没有变化！");
+        }
+        if (house.getStatus()==HouseStatus.DELETED.getValue() ){
+            return new ServiceResult(false,"已删除的房源不可修改状态！");
+
+        }
+        if (house.getStatus()==HouseStatus.RENTED.getValue() ){
+            return new ServiceResult(false,"已出租的房源不可修改状态！");
+
+        }
+        houseRepository.updateStatus(id,status);
+        return ServiceResult.success();
+    }
+
+
+
+    @Override
+    public ServiceMultiResult<Pair<HouseDTO, HouseSubscribeDTO>> findSubscribeList(int start, int size) {
+        Long userId = LoginUserUtil.getLoginUserId();
+        Pageable pageable = new PageRequest(start / size, size, new Sort(Sort.Direction.DESC, "orderTime"));
+
+        Page<HouseSubscribe> page = subscribeRepository.findAllByAdminIdAndStatus(userId, HouseSubscribeStatus.IN_ORDER_TIME.getValue(), pageable);
+
+        return wrapper(page);
+    }
+
+
+    // todo  copy 来的
+    private ServiceMultiResult<Pair<HouseDTO, HouseSubscribeDTO>> wrapper(Page<HouseSubscribe> page) {
+        List<Pair<HouseDTO, HouseSubscribeDTO>> result = new ArrayList<>();
+
+        if (page.getSize() < 1) {
+            return new ServiceMultiResult<>(page.getTotalElements(), result);
+        }
+
+        List<HouseSubscribeDTO> subscribeDTOS = new ArrayList<>();
+        List<Long> houseIds = new ArrayList<>();
+        page.forEach(houseSubscribe -> {
+            subscribeDTOS.add(modelMapper.map(houseSubscribe, HouseSubscribeDTO.class));
+            houseIds.add(houseSubscribe.getHouseId());
+        });
+
+        Map<Long, HouseDTO> idToHouseMap = new HashMap<>();
+        Iterable<House> houses = houseRepository.findAll(houseIds);
+        houses.forEach(house -> {
+            idToHouseMap.put(house.getId(), modelMapper.map(house, HouseDTO.class));
+        });
+
+        for (HouseSubscribeDTO subscribeDTO : subscribeDTOS) {
+            Pair<HouseDTO, HouseSubscribeDTO> pair = Pair.of(idToHouseMap.get(subscribeDTO.getHouseId()), subscribeDTO);
+            result.add(pair);
+        }
+
+        return new ServiceMultiResult<>(page.getTotalElements(), result);
+    }
+
+
+    @Override
+    @Transactional
+    public ServiceResult updateCover(Long coverId, Long targetId) {
+        HousePicture cover = pictureRepository.findOne(coverId);
+        if (cover == null) {
+            return ServiceResult.notFound();
+        }
+
+        houseRepository.updateCover(targetId, cover.getPath());
+        return ServiceResult.success();
+    }
 
 
 
