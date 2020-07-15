@@ -1,15 +1,15 @@
 package com.imooc.service.house;
 
+import com.imooc.base.ApiResponse;
 import com.imooc.base.HouseStatus;
 import com.imooc.base.LoginUserUtil;
-import com.imooc.entity.House;
-import com.imooc.entity.HouseDetail;
-import com.imooc.entity.HousePicture;
-import com.imooc.entity.HouseTag;
+import com.imooc.entity.*;
 import com.imooc.repository.*;
 import com.imooc.service.ServiceMultiResult;
 import com.imooc.service.ServiceResult;
 import com.imooc.web.dto.HouseDTO;
+import com.imooc.web.dto.HouseDetailDTO;
+import com.imooc.web.dto.HousePictureDTO;
 import com.imooc.web.form.DatatableSearch;
 import com.imooc.web.form.HouseForm;
 import com.imooc.web.form.PhotoForm;
@@ -48,6 +48,45 @@ public class HouseServiceImpl implements HouseService {
     ModelMapper modelMapper;
     @Value("${qiniu.cdn.prefix}")
     String cdnPrefix;
+
+    @Override
+    public ServiceResult<HouseDTO> getHouseInfoById(Long id){
+
+        House house = houseRepository.findOne(id);
+        if (null == house){
+            return ServiceResult.notFound();
+        }
+
+        //detail
+        HouseDetail detail = detailRepository.findAllByHouseId(house.getId());
+        //tag
+        List<HouseTag> tagList = tagRepository.findAllByHouseId(house.getId());
+        //photo
+        List<HousePicture> pictureList = pictureRepository.findAllByHouseId(house.getId());
+
+        HouseDTO result = modelMapper.map(house,HouseDTO.class);
+        HouseDetailDTO houseDetailDTO = modelMapper.map(detail,HouseDetailDTO.class);
+        List<String> tagStrList = new ArrayList<>();
+        tagList.forEach(tag->{tagStrList.add(tag.getName());});
+
+        List<HousePictureDTO> pictureDTOList = new ArrayList<>();
+        pictureList.forEach(picture->{pictureDTOList.add(modelMapper.map(picture, HousePictureDTO.class));});
+
+        if (LoginUserUtil.getLoginUserId() >0){//已登录用户
+            HouseSubscribe subscribe = subscribeRepository.findByHouseIdAndUserId(house.getId(),LoginUserUtil.getLoginUserId());
+            if (subscribe != null){
+                result.setSubscribeStatus(subscribe.getStatus());
+            }
+        }
+
+        //package
+        result.setHouseDetail(houseDetailDTO);
+        result.setTags(tagStrList);
+        result.setPictures(pictureDTOList);
+
+        return ServiceResult.of(result);
+    }
+
 
     @Override
     @Transactional
@@ -121,6 +160,7 @@ public class HouseServiceImpl implements HouseService {
 
         return new ServiceMultiResult<>(houses.getTotalElements(), houseDTOS);
     }
+
 
 
     public List<HouseTag> getTags(HouseForm houseForm,Long houseId){

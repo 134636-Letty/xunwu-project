@@ -8,6 +8,7 @@ import com.imooc.repository.SubwayRepository;
 import com.imooc.repository.SubwayStationRepository;
 import com.imooc.repository.SupportAddressRepository;
 import com.imooc.service.ServiceMultiResult;
+import com.imooc.service.ServiceResult;
 import com.imooc.web.dto.SubwayDTO;
 import com.imooc.web.dto.SubwayStationDTO;
 import com.imooc.web.dto.SupportAddressDTO;
@@ -88,8 +89,31 @@ public class AddressServiceImpl implements AddressService{
         return result;
     }
 
+    @Override
+    public ServiceResult<SubwayDTO> findSubway(Long subWagId){
+       if (null == subWagId){
+           return ServiceResult.notFound();
+       }
+       Subway subway = subwayRepository.findOne(subWagId);
+       if (null == subway){
+           return ServiceResult.notFound();
+       }
+       SubwayDTO subwayDTO =modelMapper.map(subway,SubwayDTO.class);
+       return ServiceResult.of(subwayDTO);
+    }
 
-
+    @Override
+    public ServiceResult<SubwayStationDTO> findSubwayStation(Long subwayStationId){
+        if (null == subwayStationId){
+            return ServiceResult.notFound();
+        }
+        SubwayStation subwayStation = subwayStationRepository.findOne(subwayStationId);
+        if (null == subwayStation){
+            return ServiceResult.notFound();
+        }
+        SubwayStationDTO subwayStationDTO = modelMapper.map(subwayStation,SubwayStationDTO.class);
+        return ServiceResult.of(subwayStationDTO);
+    }
 
 
 

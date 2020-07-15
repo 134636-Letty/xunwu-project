@@ -3,15 +3,14 @@ package com.imooc.web.controller.admin;
 import com.google.gson.Gson;
 import com.imooc.base.ApiDataTableResponse;
 import com.imooc.base.ApiResponse;
+import com.imooc.entity.HouseDetail;
 import com.imooc.entity.SupportAddress;
 import com.imooc.service.ServiceMultiResult;
 import com.imooc.service.ServiceResult;
 import com.imooc.service.house.AddressService;
 import com.imooc.service.house.HouseService;
 import com.imooc.service.house.IQiNiuService;
-import com.imooc.web.dto.HouseDTO;
-import com.imooc.web.dto.QiNiuPutRet;
-import com.imooc.web.dto.SupportAddressDTO;
+import com.imooc.web.dto.*;
 import com.imooc.web.form.DatatableSearch;
 import com.imooc.web.form.HouseForm;
 import com.qiniu.common.QiniuException;
@@ -20,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -109,6 +109,37 @@ public class AdminController {
         return response;
     }
 
+    @GetMapping("admin/house/edit")
+    public String getHouseInfoById(@RequestParam(value = "id") Long id, Model model){
+        if (null == id || id<1){
+            return  "404";
+        }
+
+        ServiceResult<HouseDTO> result = houseService.getHouseInfoById(id);
+        if (!result.isSuccess()){
+            return "404";
+        }
+        HouseDTO houseDTO =result.getResult();
+        model.addAttribute("house",result.getResult());
+
+        Map<SupportAddress.Level,SupportAddressDTO>  map =addressService.findCityAndRegion(houseDTO.getCityEnName(),houseDTO.getRegionEnName());
+        model.addAttribute("city",map.get(SupportAddress.Level.CITY));
+        model.addAttribute("region",map.get(SupportAddress.Level.REGION));
+
+        HouseDetailDTO detailDTO = houseDTO.getHouseDetail();
+        ServiceResult<SubwayDTO> subwayDTOServiceResult = addressService.findSubway(detailDTO.getSubwayLineId());
+        if (subwayDTOServiceResult.isSuccess()) {
+            model.addAttribute("subway", subwayDTOServiceResult.getResult());
+        }
+
+        ServiceResult<SubwayStationDTO> stationDTOServiceResult =  addressService.findSubwayStation(detailDTO.getSubwayStationId());
+        if (stationDTOServiceResult.isSuccess()) {
+            model.addAttribute("station", stationDTOServiceResult.getResult());
+        }
+
+        return "admin/house-edit";
+//        return "admin/house-add";
+    }
 
     @PostMapping(value = "admin/upload/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody

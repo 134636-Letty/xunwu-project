@@ -3,6 +3,7 @@ package com.imooc.service.house;
 
 import com.imooc.entity.SupportAddress;
 import com.imooc.service.ServiceMultiResult;
+import com.imooc.service.ServiceResult;
 import com.imooc.web.dto.SubwayDTO;
 import com.imooc.web.dto.SubwayStationDTO;
 import com.imooc.web.dto.SupportAddressDTO;
@@ -21,4 +22,7 @@ public interface AddressService {
 
     Map<SupportAddress.Level,SupportAddressDTO> findCityAndRegion(String cityName, String regionEnName);
 
+    ServiceResult<SubwayDTO> findSubway(Long subWagId);
+
+    ServiceResult<SubwayStationDTO> findSubwayStation(Long subwayStationId);
     }

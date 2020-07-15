@@ -1,5 +1,6 @@
 package com.imooc.service.house;
 
+import com.imooc.base.ApiResponse;
 import com.imooc.service.ServiceMultiResult;
 import com.imooc.service.ServiceResult;
 import com.imooc.web.dto.HouseDTO;
@@ -10,4 +11,6 @@ public interface HouseService {
     ServiceResult<Boolean> save (HouseForm houseForm);
 
     ServiceMultiResult<HouseDTO> adminQuery(DatatableSearch searchBody);
+
+    ServiceResult<HouseDTO> getHouseInfoById(Long id);
 }
