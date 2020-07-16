@@ -25,4 +25,11 @@ public interface AddressService {
     ServiceResult<SubwayDTO> findSubway(Long subWagId);
 
     ServiceResult<SubwayStationDTO> findSubwayStation(Long subwayStationId);
-    }
+
+    /**
+     * 根据城市英文简写获取城市详情信息
+     * @param cityEnName
+     * @return
+     */
+    ServiceResult<SupportAddressDTO> findCity(String cityEnName);
+}

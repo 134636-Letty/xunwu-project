@@ -7,6 +7,7 @@ import com.imooc.web.dto.HouseDTO;
 import com.imooc.web.dto.HouseSubscribeDTO;
 import com.imooc.web.form.DatatableSearch;
 import com.imooc.web.form.HouseForm;
+import com.imooc.web.form.RentSearch;
 import org.springframework.data.util.Pair;
 
 public interface HouseService {
@@ -38,4 +39,6 @@ public interface HouseService {
     ServiceMultiResult<Pair<HouseDTO, HouseSubscribeDTO>> findSubscribeList(int start, int size);
 
     ServiceResult updateCover(Long coverId, Long targetId);
+
+    ServiceMultiResult<HouseDTO> query(RentSearch rentSearch);
 }

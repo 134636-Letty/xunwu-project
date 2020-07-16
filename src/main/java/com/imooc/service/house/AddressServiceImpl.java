@@ -1,5 +1,6 @@
 package com.imooc.service.house;
 
+import com.imooc.base.ApiResponse;
 import com.imooc.entity.Subway;
 import com.imooc.entity.SubwayStation;
 import com.imooc.entity.SupportAddress;
@@ -115,13 +116,21 @@ public class AddressServiceImpl implements AddressService{
         return ServiceResult.of(subwayStationDTO);
     }
 
+    @Override
+    public ServiceResult<SupportAddressDTO> findCity(String cityEnName) {
+        if (StringUtils.isEmpty(cityEnName)){
+            return ServiceResult.notFound();
+        }
 
+        SupportAddress supportAddress = supportAddressRepository.findByEnNameAndLevel(cityEnName, SupportAddress.Level.CITY.getValue());
+        if (null == supportAddress){
+            return ServiceResult.notFound();
+        }
 
+        SupportAddressDTO supportAddressDTO =modelMapper.map(supportAddress,SupportAddressDTO.class);
 
-
-
-
-
+        return ServiceResult.of(supportAddressDTO);
+    }
 
 
 }

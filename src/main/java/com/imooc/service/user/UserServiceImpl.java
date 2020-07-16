@@ -5,6 +5,9 @@ import com.imooc.entity.User;
 import com.imooc.repository.RoleRepository;
 import com.imooc.repository.UserRepository;
 import com.imooc.service.IUserService;
+import com.imooc.service.ServiceResult;
+import com.imooc.web.dto.UserDTO;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.GrantedAuthority;
@@ -39,5 +42,17 @@ public class UserServiceImpl implements IUserService {
 
         user.setAuthorityList(authorities);
         return user;
+    }
+    @Autowired
+    ModelMapper modelMapper;
+
+    @Override
+    public ServiceResult<UserDTO> findById(Long userId) {
+        User user = userRepository.findOne(userId);
+        if (user == null){
+            return ServiceResult.notFound();
+        }
+        UserDTO userDTO = modelMapper.map(user,UserDTO.class);
+        return ServiceResult.of(userDTO);
     }
 }
