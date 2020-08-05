@@ -1,7 +1,9 @@
 package com.imooc.service.search;
 
 /**
- * 索引关键词统一定义
+ * 索引关键词统一定义 todo 操作时要用到的常量 （注意下，不是很懂）
+ * 为什么既要用es又要用MySQL？
+ * 因为es做检索，MySQL做原始数据的存储，MySQL支持事务
  * Created by 瓦力.
  */
 public class HouseIndexKey {

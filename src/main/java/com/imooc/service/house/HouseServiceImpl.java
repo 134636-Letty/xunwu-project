@@ -6,6 +6,7 @@ import com.imooc.entity.*;
 import com.imooc.repository.*;
 import com.imooc.service.ServiceMultiResult;
 import com.imooc.service.ServiceResult;
+import com.imooc.service.search.ISearchService;
 import com.imooc.web.dto.HouseDTO;
 import com.imooc.web.dto.HouseDetailDTO;
 import com.imooc.web.dto.HousePictureDTO;
@@ -14,6 +15,7 @@ import com.imooc.web.form.DatatableSearch;
 import com.imooc.web.form.HouseForm;
 import com.imooc.web.form.PhotoForm;
 import com.imooc.web.form.RentSearch;
+import org.elasticsearch.search.SearchService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +47,9 @@ public class HouseServiceImpl implements HouseService {
     HouseTagRepository tagRepository;
     @Autowired
     ModelMapper modelMapper;
+    @Autowired
+    ISearchService searchService;
+
     @Value("${qiniu.cdn.prefix}")
     String cdnPrefix;
 
@@ -125,7 +130,7 @@ public class HouseServiceImpl implements HouseService {
         int page = searchBody.getStart() / searchBody.getLength();
         Pageable pageable = new PageRequest(page,searchBody.getLength(),sort);
         Specification<House> specification = ((root, query, cb) -> {
-            Predicate predicate = cb.equal(root.get("adminId"),LoginUserUtil.getLoginUserId());
+            Predicate predicate = cb.equal(root.get("adminId"),LoginUserUtil.getLoginUserId()); //只获取本登陆用户下的数据
             predicate = cb.and(predicate,cb.notEqual(root.get("status"), HouseStatus.DELETED.getValue()));
             if (searchBody.getCity() != null){
                 predicate = cb.and(predicate,cb.equal(root.get("cityEnName"),searchBody.getCity()));
@@ -338,6 +343,12 @@ public class HouseServiceImpl implements HouseService {
 
         }
         houseRepository.updateStatus(id,status);
+        if (status == HouseStatus.PASSES.getValue()){
+            searchService.index(id);
+        }else {
+            searchService.remove(id);
+        }
+
         return ServiceResult.success();
     }
 
