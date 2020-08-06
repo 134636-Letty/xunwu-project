@@ -221,9 +221,9 @@ public class HouseServiceImpl implements HouseService {
         house.setLastUpdateTime(new Date());
         houseRepository.save(house);
 
-        /*if (house.getStatus() == HouseStatus.PASSES.getValue()) {
+        if (house.getStatus() == HouseStatus.PASSES.getValue()) {
             searchService.index(house.getId());
-        }*/
+        }
 
         return ServiceResult.success();
     }
@@ -324,6 +324,12 @@ public class HouseServiceImpl implements HouseService {
     }
 
 
+    /**
+     * 1。更新房源数据的时候更新索引（上架状态）2。上架的时候更新数据，其他情况都要删除掉
+     * @param id
+     * @param status
+     * @return
+     */
     @Override
     @Transactional
     public ServiceResult updateStatus(Long id,int status){
@@ -343,6 +349,7 @@ public class HouseServiceImpl implements HouseService {
 
         }
         houseRepository.updateStatus(id,status);
+        //上架更新索引，其他情况都要删除掉
         if (status == HouseStatus.PASSES.getValue()){
             searchService.index(id);
         }else {

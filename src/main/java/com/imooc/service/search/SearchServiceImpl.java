@@ -2,6 +2,7 @@ package com.imooc.service.search;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import com.imooc.entity.House;
 import com.imooc.entity.HouseDetail;
 import com.imooc.entity.HouseTag;
@@ -9,6 +10,7 @@ import com.imooc.repository.HouseDetailRepository;
 import com.imooc.repository.HouseRepository;
 import com.imooc.repository.HouseTagRepository;
 import com.imooc.service.ServiceMultiResult;
+import com.imooc.service.ServiceResult;
 import com.imooc.web.form.RentSearch;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.index.IndexResponse;
@@ -28,6 +30,8 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -44,6 +48,8 @@ public class SearchServiceImpl implements ISearchService {
 
     private static final String INDEX_TYPE="house";
 
+    private static final String INDEX_TOPIC = "house_build";
+
     @Autowired
     HouseRepository houseRepository;
     @Autowired
@@ -56,32 +62,51 @@ public class SearchServiceImpl implements ISearchService {
     HouseDetailRepository detailRepository;
     @Autowired
     HouseTagRepository tagRepository;
+    @Autowired
+    private KafkaTemplate<String,String> kafkaTemplate;
 
-    @Override
-    public boolean index(Long houseId) {
-       House house = houseRepository.findOne(houseId);
-       if (null == house){
-           log.error("Index house {} does not exist!",houseId);
-           return false;
-       }
+    @KafkaListener(topics = INDEX_TOPIC)
+    public void handleMessage(String content){
+        Gson gson = new Gson();
+        HouseIndexMessage message = gson.fromJson(content,HouseIndexMessage.class);
+        switch (message.getOperation()){
+            case HouseIndexMessage.INDEX:
+                this.createOrUpdateIndex(message);
+                break;
+            case HouseIndexMessage.REMOVE:
+                this.removeIndex(message);
+                break;
+            default:
+                log.warn("Not support message content"+ content);
+                break;
 
-       HouseIndexTemplate indexTemplate =modelMapper.map(house,HouseIndexTemplate.class);
+        }
+    }
+    public void createOrUpdateIndex(HouseIndexMessage message){
+        long houseId = message.getHouseId();
+        House house = houseRepository.findOne(houseId);
+        if (null == house){
+            log.error("Index house {} does not exist!",houseId);
+            return;
+        }
 
-       HouseDetail detail = detailRepository.findAllByHouseId(houseId);
-       if (null ==detail){
-       }
-       modelMapper.map(detail,HouseIndexTemplate.class);
+        HouseIndexTemplate indexTemplate =modelMapper.map(house,HouseIndexTemplate.class);
 
-       List<HouseTag> tagList = tagRepository.findAllByHouseId(houseId);
-       if (!CollectionUtils.isEmpty(tagList)){
-           List<String> tagStrList = new ArrayList<>();
-           tagList.forEach(tag->{tagStrList.add(tag.getName());});
-           indexTemplate.setTags(tagStrList);
-       }
+        HouseDetail detail = detailRepository.findAllByHouseId(houseId);
+        if (null ==detail){
+        }
+        modelMapper.map(detail,HouseIndexTemplate.class);
+
+        List<HouseTag> tagList = tagRepository.findAllByHouseId(houseId);
+        if (!CollectionUtils.isEmpty(tagList)){
+            List<String> tagStrList = new ArrayList<>();
+            tagList.forEach(tag->{tagStrList.add(tag.getName());});
+            indexTemplate.setTags(tagStrList);
+        }
 
         SearchRequestBuilder requestBuilder= this.esClient.prepareSearch(INDEX_NAME).setTypes(INDEX_TYPE).setQuery(QueryBuilders.termQuery(HouseIndexKey.HOUSE_ID,houseId));
 
-       log.debug(requestBuilder.toString());
+        log.debug(requestBuilder.toString());
 
         boolean success;
         SearchResponse searchResponse = requestBuilder.get();
@@ -95,7 +120,48 @@ public class SearchServiceImpl implements ISearchService {
             success= deleteAndCreate(totalHit,indexTemplate);
         }
 
-        return success;
+        if (!success){
+            this.index(message.getHouseId(),message.getRetry()+1);
+        }else {
+            log.debug("Index success with house"+houseId);
+        }
+    }
+
+    private void removeIndex(HouseIndexMessage message) {
+        long houseId = message.getHouseId();
+        DeleteByQueryRequestBuilder builder = DeleteByQueryAction.INSTANCE
+                .newRequestBuilder(esClient)
+                .filter(QueryBuilders.termQuery(HouseIndexKey.HOUSE_ID,houseId))
+                .source(INDEX_NAME);
+        log.debug("Delete by query for house:" + builder);
+        BulkByScrollResponse response = builder.get();
+        long delete = response.getDeleted();
+        log.debug("Delete total"+delete);
+
+        if (delete <=0){
+            log.warn("Did not remove data from es for response:"+response);
+            this.remove(houseId,message.getRetry()+1);
+        }
+    }
+
+    @Override
+    public void index(Long houseId) {
+      this.index(houseId,0);
+    }
+
+    public void index(Long houseId,int retry){
+        if (retry > HouseIndexMessage.MAX_RETRY){
+            log.error("Retry index times over 3 for house:" + houseId +"Please check it!");
+            return;
+        }
+        HouseIndexMessage message= new HouseIndexMessage(houseId,HouseIndexMessage.INDEX,retry);
+
+        Gson gson = new Gson();
+        try {
+            kafkaTemplate.send(INDEX_TOPIC,gson.toJson(message));
+        }catch (Exception e){
+            log.error("Json encode error for"+message);
+        }
     }
 
     private boolean create(HouseIndexTemplate indexTemplate){
@@ -153,14 +219,18 @@ public class SearchServiceImpl implements ISearchService {
 
     @Override
     public void remove(Long houseId) {
-        DeleteByQueryRequestBuilder builder = DeleteByQueryAction.INSTANCE
-                .newRequestBuilder(esClient)
-                .filter(QueryBuilders.termQuery(HouseIndexKey.HOUSE_ID,houseId))
-                .source(INDEX_NAME);
-        log.debug("Delete by query for house:" + builder);
-        BulkByScrollResponse response = builder.get();
-        long delete = response.getDeleted();
-        log.debug("Delete total"+delete);
+        this.remove(houseId,0);
+    }
+
+    public void remove(Long houseId,int retry){
+        if (retry > HouseIndexMessage.MAX_RETRY){
+            log.error("Retry remove times over 3 for house:"+houseId+"Please check it!");
+            return;
+        }
+
+        HouseIndexMessage message = new HouseIndexMessage(houseId,HouseIndexMessage.REMOVE,retry);
+         Gson gson = new Gson();
+         this.kafkaTemplate.send(INDEX_TOPIC,gson.toJson(message));
     }
 
     @Override

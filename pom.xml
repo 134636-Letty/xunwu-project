@@ -118,6 +118,13 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- Kafka -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+
         <!-- 七牛依赖 -->
         <dependency>
             <groupId>com.qiniu</groupId>
