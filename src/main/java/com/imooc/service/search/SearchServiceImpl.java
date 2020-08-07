@@ -2,7 +2,9 @@ package com.imooc.service.search;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.primitives.Longs;
 import com.google.gson.Gson;
+import com.imooc.base.HouseSort;
 import com.imooc.entity.House;
 import com.imooc.entity.HouseDetail;
 import com.imooc.entity.HouseTag;
@@ -20,12 +22,15 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.DeleteByQueryAction;
 import org.elasticsearch.index.reindex.DeleteByQueryRequestBuilder;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.sort.SortOrder;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +39,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -235,7 +241,38 @@ public class SearchServiceImpl implements ISearchService {
 
     @Override
     public ServiceMultiResult<Long> query(RentSearch rentSearch) {
-        return null;
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery.filter(
+                QueryBuilders.termQuery(HouseIndexKey.CITY_EN_NAME,rentSearch.getCityEnName())
+        );
+
+        if (!StringUtils.isEmpty(rentSearch.getRegionEnName()) && "*" != rentSearch.getRegionEnName()){
+            boolQuery.filter(
+                    QueryBuilders.termQuery(HouseIndexKey.REGION_EN_NAME,rentSearch.getRegionEnName())
+            );
+        }
+
+        SearchRequestBuilder searchRequestBuilder = this.esClient.prepareSearch(INDEX_NAME)
+                .setTypes(INDEX_TYPE)
+                .setQuery(boolQuery)
+                .addSort(HouseSort.getSortKey(rentSearch.getOrderBy()), SortOrder.fromString(rentSearch.getOrderDirection()))
+                .setFrom(rentSearch.getStart())
+                .setSize(rentSearch.getSize());
+
+        log.debug(searchRequestBuilder.toString());
+
+        List<Long> houseIds = new ArrayList<>();
+        SearchResponse response = searchRequestBuilder.get();
+        if ( response.status() != RestStatus.OK){
+            log.warn("Search status is no ok for"+ searchRequestBuilder);
+            return new ServiceMultiResult<>(0,houseIds);
+        }
+
+        for (SearchHit hit : response.getHits()){
+           houseIds.add(Longs.tryParse(String.valueOf(hit.getSource().get(HouseIndexKey.HOUSE_ID))));
+        }
+
+        return new ServiceMultiResult<>(response.getHits().totalHits,houseIds);
     }
 
 

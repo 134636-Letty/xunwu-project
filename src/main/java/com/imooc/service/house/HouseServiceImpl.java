@@ -28,6 +28,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import javax.persistence.criteria.Predicate;
 import java.util.*;
@@ -414,10 +415,36 @@ public class HouseServiceImpl implements HouseService {
         return ServiceResult.success();
     }
 
+    public List<HouseDTO> wrapperHouseResult(List<Long> houseIds){
+        Iterable<House> houses =houseRepository.findAll(houseIds);
+        Map<Long,HouseDTO> idToHouseMap = new HashMap<>();
+         houses.forEach(house -> {
+            HouseDTO houseDTO = modelMapper.map(house,HouseDTO.class);
+            houseDTO.setCover(this.cdnPrefix+house.getCover());
+            idToHouseMap.put(house.getId(),houseDTO);
+         });
+        wrapperHouseList(houseIds,idToHouseMap);
+
+        List<HouseDTO> result = new ArrayList<>();
+        houseIds.forEach(id->{
+            result.add(idToHouseMap.get(id));
+        });
+        return result;
+    }
+
     @Override
     public ServiceMultiResult<HouseDTO> query(RentSearch rentSearch) {
+        if (!StringUtils.isEmpty(rentSearch.getKeywords())){
+            ServiceMultiResult<Long> serviceMultiResult =searchService.query(rentSearch);
+            if (0 == serviceMultiResult.getTotal()){
+                return new ServiceMultiResult<>(0,new ArrayList<>());
+            }
+            return new ServiceMultiResult<>(serviceMultiResult.getTotal(),wrapperHouseResult(serviceMultiResult.getResult()));
+        }
         return simpleQuery(rentSearch);
     }
+
+
     public ServiceMultiResult<HouseDTO> simpleQuery(RentSearch rentSearch) {
         Sort sort = HouseSort.generateSort(rentSearch.getOrderBy(),rentSearch.getOrderDirection());
         int page = rentSearch.getStart() / rentSearch.getSize();
