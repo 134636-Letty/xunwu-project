@@ -248,7 +248,7 @@ public class SearchServiceImpl implements ISearchService {
                 QueryBuilders.termQuery(HouseIndexKey.CITY_EN_NAME,rentSearch.getCityEnName())
         );
 
-        if (!StringUtils.isEmpty(rentSearch.getRegionEnName()) && "*" != rentSearch.getRegionEnName()){
+        if (!StringUtils.isEmpty(rentSearch.getRegionEnName()) && !"*".equals(rentSearch.getRegionEnName())){
             boolQuery.filter(
                     QueryBuilders.termQuery(HouseIndexKey.REGION_EN_NAME,rentSearch.getRegionEnName())
             );
@@ -289,25 +289,16 @@ public class SearchServiceImpl implements ISearchService {
             );
         }
 
-       /* boolQuery.must(
-                QueryBuilders.multiMatchQuery(rentSearch.getKeywords(),
-                        HouseIndexKey.TITLE,
-                        HouseIndexKey.TRAFFIC,
-                        HouseIndexKey.DIRECTION,
-                        HouseIndexKey.ROUND_SERVICE,
-                        HouseIndexKey.SUBWAY_LINE_NAME,
-                        HouseIndexKey.SUBWAY_STATION_NAME)
-        );*/
-
         boolQuery.must(
                 QueryBuilders.multiMatchQuery(rentSearch.getKeywords(),
                         HouseIndexKey.TITLE,
                         HouseIndexKey.TRAFFIC,
-                        HouseIndexKey.DISTRICT,
+//                        HouseIndexKey.DIRECTION, //
                         HouseIndexKey.ROUND_SERVICE,
                         HouseIndexKey.SUBWAY_LINE_NAME,
-                        HouseIndexKey.SUBWAY_STATION_NAME
-                ));
+                        HouseIndexKey.SUBWAY_STATION_NAME)
+        );
+
 
         SearchRequestBuilder searchRequestBuilder = this.esClient.prepareSearch(INDEX_NAME)
                 .setTypes(INDEX_TYPE)
